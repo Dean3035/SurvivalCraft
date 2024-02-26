@@ -11,4 +11,5 @@ ASurvivalCraftGameMode::ASurvivalCraftGameMode()
 	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnClassFinder(TEXT("/Game/FirstPerson/Blueprints/BP_FirstPersonCharacter"));
 	DefaultPawnClass = PlayerPawnClassFinder.Class;
 
+	UE_LOG(LogTemp, Log, TEXT("Test"));
 }
