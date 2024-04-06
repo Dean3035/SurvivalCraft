@@ -6,6 +6,8 @@
 #include "GameFramework/Character.h"
 #include "MainCharacter.generated.h"
 
+class UInputAction;
+class UInputMappingContext;
 class UPlayerInputActorComponent;
 class UCameraComponent;
 class USpringArmComponent;
@@ -40,16 +42,39 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Camera", meta=(AllowPrivateAccess = "true"))
 	UCameraComponent* CameraComponent;
 
-private:
+	//=============================关于增强输入的==========================
 
+	//默认的上下文映射
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input", meta=(AllowPrivateAccess = "true"))
-	UPlayerInputActorComponent* PlayerInputActorComponent;
+	UInputMappingContext* DefaultMappingContext;
+
+	//增强输入组件
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input", meta=(AllowPrivateAccess = "true"))
+	UEnhancedInputComponent* EnhancedInputComponent;
+
+	//移动动作
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input", meta=(AllowPrivateAccess = "true"))
+	UInputAction* MovementAction;
+
+	//移动动作
+	UFUNCTION()
+	void Movement(const FInputActionValue& Value);
 
 private:
+
+	//=======================一些前置设置和检查===================================
+	
+	//加载摄像机和摇臂组件
+	void SetSpringCameraComp();
+
+	//设置骨骼网格体和动画实例
+	void SetSkeletalMeshAnimInstanceClass();
 
 	//检查AnimInstanceClass
 	void CheckAnimInstanceClass();
 
-	//加载摄像机和摇臂组件
-	void AddSpringCameraComp();
+	//设置增强输入相关
+	void SetEnhancedInput();
+
+	//===========================================================================
 };

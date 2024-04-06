@@ -3,9 +3,12 @@
 
 #include "Character/MainCharacter.h"
 
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
 #include "Camera/CameraComponent.h"
-#include "Component/PlayerInputActorComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "InputMappingContext.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 AMainCharacter::AMainCharacter()
@@ -14,27 +17,13 @@ AMainCharacter::AMainCharacter()
 	PrimaryActorTick.bCanEverTick = true;
 
 	//添加摇臂和摄像机组件
-	AddSpringCameraComp();
-	
-	//加载骨骼网格体
-	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SkeletalMeshAsset(TEXT("/Script/Engine.SkeletalMesh'/Game/Man/Mesh/Full/SK_Man_Full_01.SK_Man_Full_01'"));
-	if (SkeletalMeshAsset.Succeeded())
-	{
-		//设置
-		GetMesh()->SetSkeletalMesh(SkeletalMeshAsset.Object);
-		GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -88.0f));
-		GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));//(Pitch=0.000000,Yaw=-90.000000,Roll=0.000000)
-	}
+	SetSpringCameraComp();
 
-	//关于动画的
-	static ConstructorHelpers::FClassFinder<UAnimInstance> AnimationClassFinder(TEXT("//Script/Engine.AnimBlueprint'/Game/Dean/Animations/Animations/ABP/ABP_MainCharacter.ABP_MainCharacter_C'"));
-	if (AnimationClassFinder.Succeeded())
-	{
-		GetMesh()->SetAnimInstanceClass(AnimationClassFinder.Class);
-	}
+	//设置骨骼网格体和动画实例
+	SetSkeletalMeshAnimInstanceClass();
 
-	//绑定自己写的组件
-	PlayerInputActorComponent = CreateDefaultSubobject<UPlayerInputActorComponent>(TEXT("PlayerInputActorComponent"));
+	//设置增强输入相关
+	SetEnhancedInput();
 }
 
 // Called when the game starts or when spawned
@@ -42,7 +31,18 @@ void AMainCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	//检查动画实例
 	CheckAnimInstanceClass();
+
+	//设置上下文映射
+	if (DefaultMappingContext)
+	{
+		UEnhancedInputLocalPlayerSubsystem* Subsystem = UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetLocalPlayer()->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+		if (Subsystem)
+		{
+			Subsystem->AddMappingContext(DefaultMappingContext, 0);
+		}
+	}
 }
 
 // Called every frame
@@ -57,6 +57,12 @@ void AMainCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent);
+	if (EnhancedInputComponent)
+	{
+		//绑定移动
+		EnhancedInputComponent->BindAction(MovementAction, ETriggerEvent::Triggered, this, &AMainCharacter::Movement);
+	}
 }
 
 void AMainCharacter::CheckAnimInstanceClass()
@@ -73,7 +79,21 @@ void AMainCharacter::CheckAnimInstanceClass()
 	}
 }
 
-void AMainCharacter::AddSpringCameraComp()
+void AMainCharacter::Movement(const FInputActionValue& Value)
+{
+	FVector2D MovementValue = Value.Get<FVector2D>();
+
+	const FRotator ControlRotator = GetControlRotation();
+	const FRotator YawRotator = FRotator(0.0f, ControlRotator.Yaw, 0.0f);
+
+	const FVector Forward = YawRotator.Quaternion().GetForwardVector();
+	const FVector Right = YawRotator.Quaternion().GetRightVector();
+	
+	AddMovementInput(Forward, MovementValue.Y);
+	AddMovementInput(Right, MovementValue.X);
+}
+
+void AMainCharacter::SetSpringCameraComp()
 {
 	SpringArmComponent = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
 	SpringArmComponent->SetupAttachment(GetRootComponent());
@@ -82,5 +102,42 @@ void AMainCharacter::AddSpringCameraComp()
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
 	CameraComponent->SetupAttachment(SpringArmComponent);
 	CameraComponent->bUsePawnControlRotation = false;
+}
+
+void AMainCharacter::SetSkeletalMeshAnimInstanceClass()
+{
+	//加载骨骼网格体
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> SkeletalMeshAsset(TEXT("/Script/Engine.SkeletalMesh'/Game/Man/Mesh/Full/SK_Man_Full_01.SK_Man_Full_01'"));
+	if (SkeletalMeshAsset.Succeeded())
+	{
+		//设置
+		GetMesh()->SetSkeletalMesh(SkeletalMeshAsset.Object);
+		GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -88.0f));
+		GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));//(Pitch=0.000000,Yaw=-90.000000,Roll=0.000000)
+	}
+
+	//关于动画的
+	static ConstructorHelpers::FClassFinder<UAnimInstance> AnimationClassFinder(TEXT("//Script/Engine.AnimBlueprint'/Game/Dean/Animations/Animations/ABP/ABP_MainCharacter.ABP_MainCharacter_C'"));
+	if (AnimationClassFinder.Succeeded())
+	{
+		GetMesh()->SetAnimInstanceClass(AnimationClassFinder.Class);
+	}
+}
+
+void AMainCharacter::SetEnhancedInput()
+{
+	//加载上下文映射
+	static ConstructorHelpers::FObjectFinder<UInputMappingContext> DefaultMappingContextAsset(TEXT("/Script/EnhancedInput.InputMappingContext'/Game/Dean/Input/IMC_Default.IMC_Default'"));
+	if (DefaultMappingContextAsset.Succeeded())
+	{
+		DefaultMappingContext = DefaultMappingContextAsset.Object;
+	}
+	
+	//移动
+	static ConstructorHelpers::FObjectFinder<UInputAction> InputAction_Movement_Asset(TEXT("/Script/EnhancedInput.InputAction'/Game/Dean/Input/IA_Movement.IA_Movement'"));
+	if (InputAction_Movement_Asset.Succeeded())
+	{
+		MovementAction = InputAction_Movement_Asset.Object;
+	}
 }
 
