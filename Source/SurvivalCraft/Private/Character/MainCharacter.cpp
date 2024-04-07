@@ -8,6 +8,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "InputMappingContext.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 // Sets default values
@@ -15,6 +16,9 @@ AMainCharacter::AMainCharacter()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	bUseControllerRotationYaw = false;
+	GetCharacterMovement()->bOrientRotationToMovement = true;
 
 	//添加摇臂和摄像机组件
 	SetSpringCameraComp();
@@ -60,8 +64,10 @@ void AMainCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 	EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent);
 	if (EnhancedInputComponent)
 	{
-		//绑定移动
-		EnhancedInputComponent->BindAction(MovementAction, ETriggerEvent::Triggered, this, &AMainCharacter::Movement);
+		EnhancedInputComponent->BindAction(MovementAction, ETriggerEvent::Triggered, this, &AMainCharacter::Movement);//绑定移动
+		EnhancedInputComponent->BindAction(YawPitchAction, ETriggerEvent::Triggered, this, &AMainCharacter::YawPitch);//绑定上下左右看
+		EnhancedInputComponent->BindAction(RunAction, ETriggerEvent::Started, this, &AMainCharacter::SwitchRun);//跑步
+		EnhancedInputComponent->BindAction(RunAction, ETriggerEvent::Completed, this, &AMainCharacter::SwitchWalk);//走路
 	}
 }
 
@@ -91,6 +97,26 @@ void AMainCharacter::Movement(const FInputActionValue& Value)
 	
 	AddMovementInput(Forward, MovementValue.Y);
 	AddMovementInput(Right, MovementValue.X);
+}
+
+void AMainCharacter::YawPitch(const FInputActionValue& Value)
+{
+	FVector2D YawPitchValue = Value.Get<FVector2D>();
+
+	UE_LOG(LogTemp, Log, TEXT("dean YawPitchValue x=%f  y=%f"), YawPitchValue.X, YawPitchValue.Y);
+	
+	AddControllerYawInput(YawPitchValue.X);
+	AddControllerPitchInput(YawPitchValue.Y);
+}
+
+void AMainCharacter::SwitchWalk(const FInputActionValue& Value)
+{
+	GetCharacterMovement()->MaxWalkSpeed = 200.0f;
+}
+
+void AMainCharacter::SwitchRun(const FInputActionValue& Value)
+{
+	GetCharacterMovement()->MaxWalkSpeed = 600.0f;
 }
 
 void AMainCharacter::SetSpringCameraComp()
@@ -138,6 +164,20 @@ void AMainCharacter::SetEnhancedInput()
 	if (InputAction_Movement_Asset.Succeeded())
 	{
 		MovementAction = InputAction_Movement_Asset.Object;
+	}
+
+	//左右看
+	static ConstructorHelpers::FObjectFinder<UInputAction> InputAction_YawPitch_Asset(TEXT("/Script/EnhancedInput.InputAction'/Game/Dean/Input/IA_ControlYawPitch.IA_ControlYawPitch'"));
+	if (InputAction_YawPitch_Asset.Succeeded())
+	{
+		YawPitchAction = InputAction_YawPitch_Asset.Object;
+	}
+
+	//跑步
+	static ConstructorHelpers::FObjectFinder<UInputAction> Run_Asset(TEXT("/Script/EnhancedInput.InputAction'/Game/Dean/Input/IA_Run.IA_Run'"));
+	if (Run_Asset.Succeeded())
+	{
+		RunAction = Run_Asset.Object;
 	}
 }
 

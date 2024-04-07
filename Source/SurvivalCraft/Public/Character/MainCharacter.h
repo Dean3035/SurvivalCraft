@@ -56,9 +56,29 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input", meta=(AllowPrivateAccess = "true"))
 	UInputAction* MovementAction;
 
+	//Yaw和Pitch动作
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input", meta=(AllowPrivateAccess = "true"))
+	UInputAction* YawPitchAction;
+
+	//跑步
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input", meta=(AllowPrivateAccess = "true"))
+	UInputAction* RunAction;
+
 	//移动动作
 	UFUNCTION()
 	void Movement(const FInputActionValue& Value);
+
+	//Yaw和Pitch动作
+	UFUNCTION()
+	void YawPitch(const FInputActionValue& Value);
+
+	//Run动作 跑步
+	UFUNCTION()
+	void SwitchWalk(const FInputActionValue& Value);
+	
+	//Run动作 跑步
+	UFUNCTION()
+	void SwitchRun(const FInputActionValue& Value);
 
 private:
 
